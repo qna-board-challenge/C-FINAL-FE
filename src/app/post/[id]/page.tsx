@@ -1,62 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-interface Comment {
-  id: number;
-  content: string;
-  author: string;
-  createdAt: string;
-}
-
-interface Post {
-  id: number;
-  title: string;
-  author: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  viewCount: number;
-  commentCount: number;
-  comments: Comment[];
-}
+import {
+  getPost,
+  getComments,
+  createComment,
+  deletePost,
+  Post,
+  Comment,
+  CommentCreateRequest,
+} from '@/services/postService';
 
 export default function PostDetail({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
   const [action, setAction] = useState<'edit' | 'delete'>('edit');
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentContent, setCommentContent] = useState('');
   const [commentPassword, setCommentPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 임시 데이터 (나중에 API 연동 시 제거)
-  const post: Post = {
-    id: parseInt(params.id),
-    title: '게시글 제목',
-    author: '작성자',
-    content: '게시글 내용입니다.',
-    createdAt: '2024-03-20',
-    updatedAt: '2024-03-20',
-    viewCount: 100,
-    commentCount: 2,
-    comments: [
-      {
-        id: 1,
-        content: '첫 번째 댓글입니다.',
-        author: '댓글작성자1',
-        createdAt: '2024-03-20',
-      },
-      {
-        id: 2,
-        content: '두 번째 댓글입니다.',
-        author: '댓글작성자2',
-        createdAt: '2024-03-20',
-      },
-    ],
+  const fetchPostAndComments = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const [postData, commentsData] = await Promise.all([
+        getPost(parseInt(params.id)),
+        getComments(parseInt(params.id)),
+      ]);
+      setPost(postData);
+      setComments(commentsData);
+    } catch (err) {
+      setError('게시글을 불러오는데 실패했습니다.');
+      console.error('Error fetching post:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchPostAndComments();
+  }, [params.id]);
 
   const handleEdit = () => {
     setAction('edit');
@@ -68,24 +58,66 @@ export default function PostDetail({ params }: { params: { id: string } }) {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
-    // 비밀번호 확인 로직 구현
-    if (action === 'edit') {
-      router.push(`/write?id=${post.id}`);
-    } else {
-      // 삭제 로직 구현
-      router.push('/');
+  const handlePasswordSubmit = async () => {
+    try {
+      if (action === 'edit') {
+        router.push(`/write?id=${params.id}`);
+      } else {
+        await deletePost(parseInt(params.id), password);
+        router.push('/');
+      }
+    } catch (err) {
+      setError('비밀번호가 일치하지 않습니다.');
+      console.error('Error:', err);
+    } finally {
+      setShowPasswordModal(false);
+      setPassword('');
     }
-    setShowPasswordModal(false);
   };
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 댓글 작성 로직 구현
-    setShowCommentForm(false);
-    setCommentContent('');
-    setCommentPassword('');
+    try {
+      const commentData: CommentCreateRequest = {
+        content: commentContent,
+        author: '익명', // 또는 사용자 입력 필드 추가
+        password: commentPassword,
+      };
+      await createComment(parseInt(params.id), commentData);
+      await fetchPostAndComments();
+      setShowCommentForm(false);
+      setCommentContent('');
+      setCommentPassword('');
+    } catch (err) {
+      setError('댓글 작성에 실패했습니다.');
+      console.error('Error creating comment:', err);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-red-500 text-center py-4">{error}</div>
+        <div className="text-center">
+          <Link href="/" className="text-blue-500 hover:underline">
+            목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return null;
+  }
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -100,8 +132,12 @@ export default function PostDetail({ params }: { params: { id: string } }) {
         <div className="flex justify-between text-gray-600 mb-4">
           <div>
             <span className="mr-4">작성자: {post.author}</span>
-            <span className="mr-4">작성일: {post.createdAt}</span>
-            <span className="mr-4">수정일: {post.updatedAt}</span>
+            <span className="mr-4">
+              작성일: {new Date(post.createdAt).toLocaleDateString()}
+            </span>
+            <span className="mr-4">
+              수정일: {new Date(post.updatedAt).toLocaleDateString()}
+            </span>
           </div>
           <div>
             <span className="mr-4">조회수: {post.viewCount}</span>
@@ -130,11 +166,13 @@ export default function PostDetail({ params }: { params: { id: string } }) {
       <section className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold mb-4">댓글</h2>
         <div className="space-y-4 mb-6">
-          {post.comments.map((comment) => (
+          {comments.map((comment) => (
             <div key={comment.id} className="border-b pb-4">
               <div className="flex justify-between mb-2">
                 <span className="font-semibold">{comment.author}</span>
-                <span className="text-gray-600">{comment.createdAt}</span>
+                <span className="text-gray-600">
+                  {new Date(comment.createdAt).toLocaleDateString()}
+                </span>
               </div>
               <p>{comment.content}</p>
             </div>

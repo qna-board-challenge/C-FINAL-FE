@@ -30,6 +30,7 @@ export default function Write() {
   } = useForm<PostData>();
 
   useEffect(() => {
+
     if (isEdit && postId) {
       //수정이 PUT이었니 아님 PATCH였니!!!!! + 우선 작성햇던 내용도 불러와야하니까 GET도
       //baseURL과 endpointURL 선언하라는데,,,,
@@ -37,8 +38,13 @@ export default function Write() {
       const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
       const endpoint = "/~~~~"; // 이거 뭐지?? 서버에 안들어가져서 모르겠네염
 
+      
       axios
         // GET으로 폼 작성햇던 데이터 받아오기
+            //근데!!! 여기 get으로 받아오는 경우가 그냥 비번 같을떄 아님?? 
+            // 내가 잘못이해한건가 postID가 수정..?
+            // 그리고 get값인데 쟤네가 각각 수정될때 불러오는거...? 내가 이해를 잘 못한건가 좀만 더 찾아보겟으
+
         .get(`${apiURL}${endpoint}/${postId}`)
         .then((res) => {
           const { title, author, password, content } = res.data;
@@ -51,8 +57,9 @@ export default function Write() {
         .catch((err) => {
           console.error("폼 불러오기 실패:", err);
         });
-    }
+    } 
   }, [isEdit, postId, setValue]); //isEdit, postId, setValue 중 하나가 변경될 때마다 실행
+
 
   const onSubmit = async (data: PostData) => {
     const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
@@ -62,8 +69,7 @@ export default function Write() {
         //PUT으로 수정 시 덮어쓰기 해주기
         await axios.put(`${apiURL}/posts/${postId}`, data);
         alert("폼 수정완료");
-      } else {
-        // isEdit이 아닌 경우 (즉 작성하기일떄) POST 로 데이터 전송
+      } else { // isEdit이 아닌 경우 (즉 작성하기일떄) POST 로 데이터 전송
         await axios.post(`${apiURL}/posts`, data);
         alert("폼 작성완료");
       }
@@ -83,10 +89,6 @@ export default function Write() {
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-2xl bg-white border-2 border-[rgb(0, 0, 0)] rounded-lg p-8 shadow-md"
       >
-        <Link href="/" className="text-blue-500 hover:underline mb-4 block">
-          ← 이전으로
-        </Link>
-
         <div className="space-y-4">
           <div>
             <label htmlFor="title" className="text-sm font-semibold mb-1">
@@ -155,12 +157,12 @@ export default function Write() {
           </div>
 
           <div className="flex justify-end space-x-2">
-            {/* <Link
+            <Link
               href="/"
               className="px-4 py-2 border rounded hover:bg-gray-100"
             >
               취소
-            </Link> */}
+            </Link>
             <button
               type="submit"
               className="bg-[rgb(80,147,234)] text-white px-4 py-2 rounded hover:bg-[rgb(44,120,221)]"

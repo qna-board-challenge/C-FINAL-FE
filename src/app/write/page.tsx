@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 
+import axios from "axios";
+
 interface PostData {
   title: string;
   author: string;
@@ -28,18 +30,56 @@ export default function Write() {
   } = useForm<PostData>();
 
   useEffect(() => {
-    if (isEdit) {
-      setValue("title", "기존 게시글 제목");
-      setValue("author", "기존 작성자");
-      setValue("password", "");
-      setValue("content", "기존 게시글 내용");
+
+    if (isEdit && postId) {
+      //수정이 PUT이었니 아님 PATCH였니!!!!! + 우선 작성햇던 내용도 불러와야하니까 GET도
+      //baseURL과 endpointURL 선언하라는데,,,,
+      /// API 엔드포인트 및 필요한 매개변수 설정
+      const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
+      const endpoint = "/~~~~"; // 이거 뭐지?? 서버에 안들어가져서 모르겠네염
+
+      
+      axios
+        // GET으로 폼 작성햇던 데이터 받아오기
+            //근데!!! 여기 get으로 받아오는 경우가 그냥 비번 같을떄 아님?? 
+            // 내가 잘못이해한건가 postID가 수정..?
+            // 그리고 get값인데 왜 쟤네가 각각 수정될때 불러오는거...? 
+            // 문제가 있어보인다. 
+
+        .get(`${apiURL}${endpoint}/${postId}`)
+        .then((res) => {
+          const { title, author, password, content } = res.data;
+          setValue("title", title);
+          setValue("author", author);
+          setValue("content", password);
+          setValue("content", content);
+        })
+        // 요청 실패시 오류 처리
+        .catch((err) => {
+          console.error("폼 불러오기 실패:", err);
+        });
+    } 
+  }, [isEdit, postId, setValue]); //isEdit, postId, setValue 중 하나가 변경될 때마다 실행
+
+
+  const onSubmit = async (data: PostData) => {
+    const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
+
+    try {
+      if (isEdit && postId) {
+        //PUT으로 수정 시 덮어쓰기 해주기
+        await axios.put(`${apiURL}/posts/${postId}`, data);
+        alert("폼 수정완료");
+      } else { // isEdit이 아닌 경우 (즉 작성하기일떄) POST 로 데이터 전송
+        await axios.post(`${apiURL}/posts`, data);
+        alert("폼 작성완료");
+      }
+      router.push("/"); // 메인으로 이동하기
+    } catch (error) {
+      console.error("요청 실패:", error);
     }
-  }, [isEdit, setValue]);
 
-  const onSubmit = (data: PostData) => {
-    console.log("제출 데이터:", data);
     // TODO: API 요청 처리 (axios.post 또는 axios.put)
-
 
     router.push("/");
   };
@@ -50,7 +90,6 @@ export default function Write() {
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-2xl bg-white border-2 border-[rgb(0, 0, 0)] rounded-lg p-8 shadow-md"
       >
-
         <div className="space-y-4">
           <div>
             <label htmlFor="title" className="text-sm font-semibold mb-1">
@@ -137,5 +176,3 @@ export default function Write() {
     </main>
   );
 }
-
-

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getPost, createPost, updatePost, Post } from '@/services/postService';
 
 interface PostForm {
   title: string;
@@ -23,24 +24,56 @@ export default function Write() {
     password: '',
     content: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isEdit) {
-      // 수정 시 기존 게시글 데이터 가져오기
-      // 임시 데이터 (나중에 API 연동 시 제거)
-      setForm({
-        title: '기존 게시글 제목',
-        author: '기존 작성자',
-        password: '',
-        content: '기존 게시글 내용',
-      });
-    }
-  }, [isEdit]);
+    const fetchPost = async () => {
+      if (isEdit && postId) {
+        try {
+          setIsLoading(true);
+          setError(null);
+          const post = await getPost(parseInt(postId));
+          setForm({
+            title: post.title,
+            author: post.author,
+            password: '',
+            content: post.content,
+          });
+        } catch (err) {
+          setError('게시글을 불러오는데 실패했습니다.');
+          console.error('Error fetching post:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  const handleSubmit = (e: React.FormEvent) => {
+    fetchPost();
+  }, [isEdit, postId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 게시글 작성/수정 로직 구현
-    router.push('/');
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (isEdit && postId) {
+        await updatePost({
+          id: parseInt(postId),
+          ...form,
+        });
+      } else {
+        await createPost(form);
+      }
+
+      router.push('/');
+    } catch (err) {
+      setError('게시글 저장에 실패했습니다.');
+      console.error('Error saving post:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (
@@ -52,6 +85,14 @@ export default function Write() {
       [name]: value,
     }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -65,6 +106,12 @@ export default function Write() {
         <h1 className="text-3xl font-bold mb-6">
           {isEdit ? '게시글 수정' : '게시글 작성'}
         </h1>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>
@@ -140,6 +187,7 @@ export default function Write() {
             <button
               type="submit"
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              disabled={isLoading}
             >
               {isEdit ? '수정하기' : '작성하기'}
             </button>

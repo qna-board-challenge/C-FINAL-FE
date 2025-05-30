@@ -1,10 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-interface PostForm {
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+
+import axios from "axios";
+
+interface PostData {
   title: string;
   author: string;
   password: string;
@@ -12,122 +16,144 @@ interface PostForm {
 }
 
 export default function Write() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const postId = searchParams.get('id');
+  const postId = searchParams.get("id");
   const isEdit = !!postId;
 
-  const [form, setForm] = useState<PostForm>({
-    title: '',
-    author: '',
-    password: '',
-    content: '',
-  });
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<PostData>();
 
   useEffect(() => {
-    if (isEdit) {
-      // 수정 시 기존 게시글 데이터 가져오기
-      // 임시 데이터 (나중에 API 연동 시 제거)
-      setForm({
-        title: '기존 게시글 제목',
-        author: '기존 작성자',
-        password: '',
-        content: '기존 게시글 내용',
-      });
+
+    if (isEdit && postId) {
+      //수정이 PUT이었니 아님 PATCH였니!!!!! + 우선 작성햇던 내용도 불러와야하니까 GET도
+      //baseURL과 endpointURL 선언하라는데,,,,
+      /// API 엔드포인트 및 필요한 매개변수 설정
+      const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
+      const endpoint = "/~~~~"; // 이거 뭐지?? 서버에 안들어가져서 모르겠네염
+
+      
+      axios
+        // GET으로 폼 작성햇던 데이터 받아오기
+            //근데!!! 여기 get으로 받아오는 경우가 그냥 비번 같을떄 아님?? 
+            // 내가 잘못이해한건가 postID가 수정..?
+            // 그리고 get값인데 쟤네가 각각 수정될때 불러오는거...? 내가 이해를 잘 못한건가 좀만 더 찾아보겟으
+
+        .get(`${apiURL}${endpoint}/${postId}`)
+        .then((res) => {
+          const { title, author, password, content } = res.data;
+          setValue("title", title);
+          setValue("author", author);
+          setValue("content", password);
+          setValue("content", content);
+        })
+        // 요청 실패시 오류 처리
+        .catch((err) => {
+          console.error("폼 불러오기 실패:", err);
+        });
+    } 
+  }, [isEdit, postId, setValue]); //isEdit, postId, setValue 중 하나가 변경될 때마다 실행
+
+
+  const onSubmit = async (data: PostData) => {
+    const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
+
+    try {
+      if (isEdit && postId) {
+        //PUT으로 수정 시 덮어쓰기 해주기
+        await axios.put(`${apiURL}/posts/${postId}`, data);
+        alert("폼 수정완료");
+      } else { // isEdit이 아닌 경우 (즉 작성하기일떄) POST 로 데이터 전송
+        await axios.post(`${apiURL}/posts`, data);
+        alert("폼 작성완료");
+      }
+      router.push("/"); // 메인으로 이동하기
+    } catch (error) {
+      console.error("요청 실패:", error);
     }
-  }, [isEdit]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // 게시글 작성/수정 로직 구현
-    router.push('/');
-  };
+    // TODO: API 요청 처리 (axios.post 또는 axios.put)
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    router.push("/");
   };
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Link href="/" className="text-blue-500 hover:underline">
-          ← 목록으로 돌아가기
-        </Link>
-      </div>
-
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">
-          {isEdit ? '게시글 수정' : '게시글 작성'}
-        </h1>
-
+    <main className="min-h-screen bg-[rgb(117,181,237)] flex items-center justify-center px-4 py-8">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-2xl bg-white border-2 border-[rgb(0, 0, 0)] rounded-lg p-8 shadow-md"
+      >
         <div className="space-y-4">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium mb-1">
+            <label htmlFor="title" className="text-sm font-semibold mb-1">
               제목
             </label>
             <input
-              type="text"
               id="title"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              placeholder="제목을 입력하세요"
+              {...register("title", { required: true })}
+              className="w-full p-2 border rounded bg-[rgb(239,246,255)]"
             />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">제목을 입력해주세요.</p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="author" className="block text-sm font-medium mb-1">
+            <label htmlFor="author" className="text-sm font-semibold mb-1">
               닉네임
             </label>
             <input
-              type="text"
               id="author"
-              name="author"
-              value={form.author}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              placeholder="닉네임을 입력하세요"
+              {...register("author", { required: true })}
+              className="w-full p-2 border rounded bg-[rgb(239,246,255)]"
             />
+            {errors.author && (
+              <p className="text-red-500 text-sm mt-1">
+                닉네임을 입력해주세요.
+              </p>
+            )}
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium mb-1"
-            >
+            <label htmlFor="password" className="text-sm font-semibold mb-1">
               비밀번호
             </label>
             <input
               type="password"
               id="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
+              placeholder="비밀번호를 입력하세요"
+              {...register("password", { required: true })}
+              className="w-full p-2 border rounded bg-[rgb(239,246,255)]"
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">
+                비밀번호를 입력해주세요.
+              </p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="content" className="block text-sm font-medium mb-1">
+            <label htmlFor="content" className="text-sm font-semibold mb-1">
               내용
             </label>
             <textarea
               id="content"
-              name="content"
-              value={form.content}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
+              placeholder="내용을 입력하세요"
               rows={10}
-              required
+              {...register("content", { required: true })}
+              className="w-full p-2 border rounded bg-[rgb(239,246,255)]"
             />
+            {errors.content && (
+              <p className="text-red-500 text-sm mt-1">내용을 입력해주세요.</p>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2">
@@ -139,9 +165,9 @@ export default function Write() {
             </Link>
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="bg-[rgb(80,147,234)] text-white px-4 py-2 rounded hover:bg-[rgb(44,120,221)]"
             >
-              {isEdit ? '수정하기' : '작성하기'}
+              {isEdit ? "수정하기" : "작성하기"}
             </button>
           </div>
         </div>

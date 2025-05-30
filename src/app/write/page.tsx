@@ -31,11 +31,9 @@ export default function Write() {
 
   useEffect(() => {
     if (isEdit && postId) {
-      //수정이 PUT이었니 아님 PATCH였니!!!!! + 우선 작성햇던 내용도 불러와야하니까 GET도
-      //baseURL과 endpointURL 선언하라는데,,,,
-      /// API 엔드포인트 및 필요한 매개변수 설정
+
       const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
-      const endpoint = "/~~~~"; // 이거 뭐지?? 서버에 안들어가져서 모르겠네염
+      const endpoint = "/~~~~"; // 버에 안들어가져서 모르겠네염
 
       axios
         // GET으로 폼 작성햇던 데이터 받아오기
@@ -155,12 +153,6 @@ export default function Write() {
           </div>
 
           <div className="flex justify-end space-x-2">
-            {/* <Link
-              href="/"
-              className="px-4 py-2 border rounded hover:bg-gray-100"
-            >
-              취소
-            </Link> */}
             <button
               type="submit"
               className="bg-[rgb(80,147,234)] text-white px-4 py-2 rounded hover:bg-[rgb(44,120,221)]"

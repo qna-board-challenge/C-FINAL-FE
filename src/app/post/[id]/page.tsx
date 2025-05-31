@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { use } from 'react';
 
 interface Comment {
   id: number;
@@ -23,7 +24,12 @@ interface Post {
   comments: Comment[];
 }
 
-export default function PostDetail({ params }: { params: { id: string } }) {
+export default function PostDetail({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const unwrappedParams = use(params);
   const router = useRouter();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState('');
@@ -34,7 +40,7 @@ export default function PostDetail({ params }: { params: { id: string } }) {
 
   // 임시 데이터 (나중에 API 연동 시 제거)
   const post: Post = {
-    id: parseInt(params.id),
+    id: parseInt(unwrappedParams.id),
     title: '게시글 제목',
     author: '작성자',
     content: '게시글 내용입니다.',

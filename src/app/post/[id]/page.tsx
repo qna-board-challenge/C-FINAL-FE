@@ -1,13 +1,13 @@
 // app/posts/[id]/page.tsx
 
-import PostDetail from "./PostDetail";
+import PostDetail from './PostDetail';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   try {
-    const res = await fetch("http://localhost:8080/v1/questions?size=10");
-    if (!res.ok) throw new Error("서버 응답 실패");
+    const res = await fetch('http://localhost:8080/v1/questions?size=10');
+    if (!res.ok) throw new Error('서버 응답 실패');
 
     const json = await res.json();
     const posts = json.content;
@@ -16,7 +16,7 @@ export async function generateStaticParams() {
       id: post.id.toString(),
     }));
   } catch (err) {
-    console.error("🚨 generateStaticParams 에러:", err);
+    console.error('🚨 generateStaticParams 에러:', err);
     return [];
   }
 }
@@ -25,7 +25,7 @@ export async function generateStaticParams() {
 export default async function Page(props: { params: { id: string } }) {
   const id = props.params.id;
 
-  console.log("받아온 id:", id); // 디버깅용 로그
+  console.log('받아온 id:', id); // 디버깅용 로그
 
-  return <PostDetail id={id} />;
+  return <PostDetail />;
 }

@@ -1,7 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
+  // output: "export", // ✅ 이것이 핵심
 };
 
 export default nextConfig;

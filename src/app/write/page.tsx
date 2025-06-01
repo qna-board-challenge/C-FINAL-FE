@@ -1,20 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { postService, Post } from '@/services/postService';
+import axios from 'axios';
+import Link from 'next/link';
 
 interface PostData {
   title: string;
-  nickname: string;
+  nickname: string; // 변경된 부분
   password: string;
   content: string;
 }
 
-export default function Write() {
+function PageInner() {
   const searchParams = useSearchParams();
   const postId = searchParams.get('id');
   const isEdit = !!postId;
@@ -28,42 +27,68 @@ export default function Write() {
     formState: { errors },
   } = useForm<PostData>();
 
+  const apiURL = 'http://localhost:8080';
+
   useEffect(() => {
-    if (isEdit && postId) {
-      postService
-        .getPost(Number(postId))
-        .then((post) => {
+    const fetchPostData = async () => {
+      if (isEdit && postId) {
+        try {
+          const response = await axios.get(`${apiURL}/v1/questions/${postId}`);
+          const post = response.data;
+
+          // 🔽 react-hook-form에 값 설정
           setValue('title', post.title);
           setValue('nickname', post.nickname);
           setValue('content', post.content);
-        })
-        .catch((err) => {
-          console.error('폼 불러오기 실패:', err);
-        });
-    }
+        } catch (error: any) {
+          console.error(
+            '게시글 불러오기 실패:',
+            error.response?.data || error.message
+          );
+          alert('게시글을 불러오는 데 실패했습니다.');
+        }
+      }
+    };
+
+    fetchPostData();
   }, [isEdit, postId, setValue]);
 
+  // 🔽 여기에 이거 덮어쓰기!
   const onSubmit = async (data: PostData) => {
+    const headers = { 'Content-Type': 'application/json' };
+
     try {
       if (isEdit && postId) {
-        await postService.updatePost(Number(postId), {
+        const pwFromURL = searchParams.get('pw');
+        if (!pwFromURL) {
+          alert('비밀번호가 없습니다.');
+          return;
+        }
+
+        // 🔽 요청에 포함될 데이터: 기존 작성된 내용 + URL에서 가져온 비밀번호로 덮어쓰기
+        const requestData = {
           title: data.title,
+          nickname: data.nickname,
           content: data.content,
-          password: data.password,
+          password: pwFromURL || data.password,
+        };
+
+        await axios.put(`${apiURL}/v1/questions/${postId}`, requestData, {
+          headers,
         });
         alert('폼 수정완료');
       } else {
-        await postService.createPost({
-          title: data.title,
-          content: data.content,
-          nickname: data.nickname,
-          password: data.password,
-        });
+        await axios.post(`${apiURL}/v1/questions`, data, { headers });
         alert('폼 작성완료');
       }
+
       router.push('/');
-    } catch (error) {
-      console.error('요청 실패:', error);
+    } catch (error: any) {
+      console.error('요청 실패:', error.response?.data || error.message);
+      alert(
+        '서버 오류 발생: ' +
+          (error.response?.data?.message || '알 수 없는 오류')
+      );
     }
   };
 
@@ -155,5 +180,13 @@ export default function Write() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>로딩 중...</div>}>
+      <PageInner />
+    </Suspense>
   );
 }

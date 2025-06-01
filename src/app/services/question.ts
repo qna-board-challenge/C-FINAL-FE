@@ -1,16 +1,16 @@
 // services/question.ts
-import axios from '../lib/axios';
+import axios from "../lib/axios";
 
 export interface Question {
   id: number;
   title: string;
-  author: string;
-  createdAt: string;
+  nickname: string;
+  created: string;
   content: string;
   commentCount: number;
 }
 
 export const getQuestions = async (): Promise<Question[]> => {
-  const response = await axios.get('/questions');
+  const response = await axios.get("/questions");
   return response.data;
 };

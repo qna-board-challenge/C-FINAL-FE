@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-
-import Link from "next/link";
 import { useForm } from "react-hook-form";
-
 import axios from "axios";
+import Link from "next/link";
 
 interface PostData {
   title: string;
-  author: string;
+  nickname: string; // 변경된 부분
   password: string;
   content: string;
 }
 
-export default function Write() {
+function PageInner() {
   const searchParams = useSearchParams();
   const postId = searchParams.get("id");
   const isEdit = !!postId;
@@ -29,50 +27,69 @@ export default function Write() {
     formState: { errors },
   } = useForm<PostData>();
 
+  const apiURL = "http://localhost:8080";
+
   useEffect(() => {
-    if (isEdit && postId) {
+    const fetchPostData = async () => {
+      if (isEdit && postId) {
+        try {
+          const response = await axios.get(`${apiURL}/v1/questions/${postId}`);
+          const post = response.data;
 
-      const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
-      const endpoint = "/~~~~"; // 버에 안들어가져서 모르겠네염
+          // 🔽 react-hook-form에 값 설정
+          setValue("title", post.title);
+          setValue("nickname", post.nickname);
+          setValue("content", post.content);
+        } catch (error: any) {
+          console.error(
+            "게시글 불러오기 실패:",
+            error.response?.data || error.message
+          );
+          alert("게시글을 불러오는 데 실패했습니다.");
+        }
+      }
+    };
 
-      axios
-        // GET으로 폼 작성햇던 데이터 받아오기
-        .get(`${apiURL}${endpoint}/${postId}`)
-        .then((res) => {
-          const { title, author, password, content } = res.data;
-          setValue("title", title);
-          setValue("author", author);
-          setValue("content", password);
-          setValue("content", content);
-        })
-        // 요청 실패시 오류 처리
-        .catch((err) => {
-          console.error("폼 불러오기 실패:", err);
-        });
-    }
-  }, [isEdit, postId, setValue]); //isEdit, postId, setValue 중 하나가 변경될 때마다 실행
+    fetchPostData();
+  }, [isEdit, postId, setValue]);
 
+  // 🔽 여기에 이거 덮어쓰기!
   const onSubmit = async (data: PostData) => {
-    const apiURL = "http://3.35.233.169:8080/swagger-ui/index.html#/";
+    const headers = { "Content-Type": "application/json" };
 
     try {
       if (isEdit && postId) {
-        //PUT으로 수정 시 덮어쓰기 해주기
-        await axios.put(`${apiURL}/posts/${postId}`, data);
+        const pwFromURL = searchParams.get("pw");
+        if (!pwFromURL) {
+          alert("비밀번호가 없습니다.");
+          return;
+        }
+
+        // 🔽 요청에 포함될 데이터: 기존 작성된 내용 + URL에서 가져온 비밀번호로 덮어쓰기
+        const requestData = {
+          title: data.title,
+          nickname: data.nickname,
+          content: data.content,
+          password: pwFromURL || data.password,
+        };
+
+        await axios.put(`${apiURL}/v1/questions/${postId}`, requestData, {
+          headers,
+        });
         alert("폼 수정완료");
       } else {
-        // isEdit이 아닌 경우 (즉 작성하기일떄) POST 로 데이터 전송
-        await axios.post(`${apiURL}/posts`, data);
+        await axios.post(`${apiURL}/v1/questions`, data, { headers });
         alert("폼 작성완료");
       }
-      router.push("/"); // 메인으로 이동하기
-    } catch (error) {
-      console.error("요청 실패:", error);
+
+      router.push("/");
+    } catch (error: any) {
+      console.error("요청 실패:", error.response?.data || error.message);
+      alert(
+        "서버 오류 발생: " +
+          (error.response?.data?.message || "알 수 없는 오류")
+      );
     }
-
-    // TODO: API 요청 처리 (axios.post 또는 axios.put)
-
-    router.push("/");
   };
 
   return (
@@ -102,16 +119,16 @@ export default function Write() {
           </div>
 
           <div>
-            <label htmlFor="author" className="text-sm font-semibold mb-1">
+            <label htmlFor="nickname" className="text-sm font-semibold mb-1">
               닉네임
             </label>
             <input
-              id="author"
+              id="nickname"
               placeholder="닉네임을 입력하세요"
-              {...register("author", { required: true })}
+              {...register("nickname", { required: true })}
               className="w-full p-2 border rounded bg-[rgb(239,246,255)]"
             />
-            {errors.author && (
+            {errors.nickname && (
               <p className="text-red-500 text-sm mt-1">
                 닉네임을 입력해주세요.
               </p>
@@ -163,5 +180,13 @@ export default function Write() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>로딩 중...</div>}>
+      <PageInner />
+    </Suspense>
   );
 }
